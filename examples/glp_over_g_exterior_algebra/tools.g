@@ -94,6 +94,42 @@ return f( s, R );
 
 end );
 
+# DeclareAttribute( "BasisDegrees", IsHomalgRing );
+# InstallMethod( BasisDegrees,
+#         [ IsHomalgRing ],
+#     function( A )
+#     local standard_indices, n, basis, list, i, a;
+#     standard_indices := standard_list_of_basis_indices( A );
+
+#     n := Length( IndeterminatesOfExteriorRing( A ) ) -1;
+
+#     basis := List( standard_indices, s -> ring_element( s, A) );
+#     list := [ ];
+#     for i in [ 0 .. n + 1 ] do
+#         a := Filtered( basis, e -> Int( String( Degree(e) ) ) = -i );
+#         for i in a do
+#             Remove(basis,1);
+#         od;
+#         Add( list, a );
+#     od;
+#     return list;
+# end );
+
+# KeyDependentOperation( "MonomialsOfCertainDegree", IsHomalgRing, IsInt, ReturnTrue );
+# InstallMethod( MonomialsOfCertainDegreeOp,
+#         [ IsHomalgRing, IsInt ],
+#     function( A, d )
+#     local n;
+#     n := Length( IndeterminatesOfExteriorRing( A ) ) -1;
+#     if d = 1 then
+#         return [ Zero( A ) ];
+#     elif d in -[ 0 .. n + 1 ] then
+#         return BasisDegrees( A )[ -d + 1 ];
+#     else
+#         return [ ];
+#     fi;
+# end );
+
 ##
 DeclareAttribute( "DecompositionOfHomalgMat", IsHomalgMatrix );
 InstallMethod( DecompositionOfHomalgMat, 
@@ -139,9 +175,39 @@ for u in l do
    
 od;
 
+if WithComments = true then
+    Print( "DecompositionOfHomalgMat finished\n" );
+fi;
+
 return coeff_list;
 
 end );
+
+# ##
+# DeclareAttribute( "DecompositionOfHomogeneousHomalgMat1", IsHomalgMatrix  );
+# InstallMethod( DecompositionOfHomogeneousHomalgMat1,
+#         [ IsHomalgMatrix ],
+#     function( M )
+#     local A, ind, nr_columns, nr_rows, d, L, i, j, current_degree, p;
+#     A := M!.ring;
+#     ind := IndeterminatesOfExteriorRing( A );
+#     nr_rows := NrRows( M );
+#     nr_columns := NrColumns( M );
+#     d := DegreesOfEntries(M);
+
+#     L := List( [ 1 .. Length( ind ) + 1 ], i -> HomalgInitialMatrix( nr_rows, nr_columns, A ) );
+
+#     for i in [ 1 .. nr_rows ] do 
+#     for j in [ 1 .. nr_columns ] do 
+#         current_degree := d[i][j];
+#         p := Position( [ 1 .. Length( ind ) + 2 ], Int( String( current_degree ) ) + Length( ind ) + 1 );
+#         if p <> Length( ind ) + 2 then 
+#             SetMatElm( L[ p ], i, j, MatElm( M, i, j ) );
+#         fi;
+#     od;
+#     od;
+#     return Reversed(L);
+# end );
 
 ##
 KeyDependentOperation( "FLeftt", IsHomalgMatrix, IsInt, ReturnTrue );
@@ -217,7 +283,7 @@ end );
 KeyDependentOperation( "FRightt", IsHomalgMatrix, IsInt, ReturnTrue );
 InstallMethod( FRighttOp, [ IsHomalgMatrix, IsInt ],
 function( A, m )
-local R,basis_indices, zero_matrix,d, e_sigma, sigma;
+local R, basis_indices, zero_matrix,d, e_sigma, sigma, list;
 
 if WithComments = true then
     Print( "FRighttOp of ", NrRows(A),"x", NrColumns(A)," homalg matrix and m = ", m, "\n" );
@@ -232,7 +298,7 @@ zero_matrix := HomalgZeroMatrix( NrRows( A ), NrColumns( A ), R );
 sigma := basis_indices[ m ];
 e_sigma := ring_element( sigma, R );
 
-return Iterated( List( basis_indices, function( tau )
+list := Iterated( List( basis_indices, function( tau )
                             local lambda, m;
                             
                             if ( not IsSubset( sigma, tau ) ) or ( IsSubset( tau, sigma ) and Length( tau ) > Length( sigma ) ) then 
@@ -256,7 +322,11 @@ return Iterated( List( basis_indices, function( tau )
                             return  ( ring_element( tau, R )*( ring_element( lambda, R ) )/e_sigma )*d[ m ][ 2 ];
                             
                             end ), UnionOfRows );
-                     
+    if WithComments = true then
+        Print( "FRightOp finished \n" );
+    fi;
+    
+    return list;
 end );
 
 ##
